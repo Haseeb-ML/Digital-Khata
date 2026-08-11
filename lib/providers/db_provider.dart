@@ -2,8 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/client_model.dart';
 import '../models/transaction_model.dart';
 import '../services/db_service.dart';
+import '../services/backup_service.dart';
 
 final dbServiceProvider = Provider((ref) => DbService());
+
+final backupServiceProvider = Provider((ref) {
+  final db = ref.watch(dbServiceProvider);
+  return BackupService(db);
+});
 
 final dbInitProvider = FutureProvider((ref) async {
   final db = ref.watch(dbServiceProvider);

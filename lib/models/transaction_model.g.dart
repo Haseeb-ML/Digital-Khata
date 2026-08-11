@@ -155,7 +155,7 @@ TransactionModel _transactionModelDeserialize(
     date: reader.readDateTimeOrNull(offsets[3]),
     itemCategory: reader.readStringOrNull(offsets[4]),
     note: reader.readStringOrNull(offsets[5]),
-    type: reader.readStringOrNull(offsets[6]) ?? 'Cash Diya',
+    type: reader.readStringOrNull(offsets[6]) ?? 'Cash Given',
     unit: reader.readStringOrNull(offsets[7]),
     weight: reader.readDoubleOrNull(offsets[8]),
   );
@@ -183,7 +183,7 @@ P _transactionModelDeserializeProp<P>(
     case 5:
       return (reader.readStringOrNull(offset)) as P;
     case 6:
-      return (reader.readStringOrNull(offset) ?? 'Cash Diya') as P;
+      return (reader.readStringOrNull(offset) ?? 'Cash Given') as P;
     case 7:
       return (reader.readStringOrNull(offset)) as P;
     case 8:

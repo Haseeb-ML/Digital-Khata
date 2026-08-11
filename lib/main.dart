@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'screens/dashboard_screen.dart';
 import 'theme/app_theme.dart';
+import 'screens/login_screen.dart';
 import 'providers/locale_provider.dart';
 import 'utils/app_localizations.dart';
 
@@ -25,7 +26,7 @@ class MyApp extends ConsumerWidget {
     return MaterialApp(
       title: 'My Khata',
       theme: AppTheme.lightTheme,
-      home: const DashboardScreen(),
+      home: const LoginScreen(),
       debugShowCheckedModeBanner: false,
       locale: locale,
       supportedLocales: const [

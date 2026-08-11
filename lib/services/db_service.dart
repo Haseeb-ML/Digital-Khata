@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/client_model.dart';
@@ -7,10 +8,15 @@ class DbService {
   late Isar isar;
 
   Future<void> init() async {
-    final dir = await getApplicationDocumentsDirectory();
+    String dirPath = '';
+    if (!kIsWeb) {
+      final dir = await getApplicationDocumentsDirectory();
+      dirPath = dir.path;
+    }
+    
     isar = await Isar.open(
       [ClientSchema, TransactionModelSchema],
-      directory: dir.path,
+      directory: dirPath,
     );
   }
 
@@ -121,6 +127,23 @@ class DbService {
       client.lastTransactionDate = newTx.date;
       
       await isar.clients.put(client);
+    });
+  }
+
+  Future<void> clearAndImportData(List<Client> newClients, List<TransactionModel> newTxs) async {
+    await isar.writeTxn(() async {
+      await isar.clients.clear();
+      await isar.transactionModels.clear();
+
+      await isar.clients.putAll(newClients);
+      await isar.transactionModels.putAll(newTxs);
+    });
+  }
+
+  Future<void> clearAllData() async {
+    await isar.writeTxn(() async {
+      await isar.clients.clear();
+      await isar.transactionModels.clear();
     });
   }
 }

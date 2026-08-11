@@ -58,7 +58,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           children: [
             _buildDashboardContent(context, statsAsync, clientsAsync, formatCurrency),
             _buildClientsOnlyContent(context, clientsAsync, formatCurrency),
-            const Center(child: Text('Backup - Coming Soon!')),
+            _buildBackupContent(context, ref),
             _buildSettingsContent(context),
           ],
         ),
@@ -535,6 +535,238 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onTap: () {
               _showLanguageBottomSheet(context);
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackupContent(BuildContext context, WidgetRef ref) {
+    final loc = AppLocalizations.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(loc.translate('backup_restore_title'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+          const SizedBox(height: 4),
+          Text(loc.translate('backup_restore_sub'), style: const TextStyle(fontSize: 14, color: Colors.grey)),
+          const SizedBox(height: 24),
+          
+          // Backup Card
+          _buildActionCard(
+            context: context,
+            icon: Icons.cloud_download_outlined,
+            iconColor: const Color(0xFFB45309),
+            iconBgColor: const Color(0xFFFEF3C7),
+            title: loc.translate('backup_data'),
+            description: loc.translate('backup_desc'),
+            buttonText: loc.translate('backup_data'),
+            buttonIcon: Icons.download_outlined,
+            isFilledButton: true,
+            buttonColor: const Color(0xFFB45309),
+            onTap: () async {
+              try {
+                await ref.read(backupServiceProvider).exportData();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.translate('export_complete'))));
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${loc.translate('error')}: $e')));
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Restore Card
+          _buildActionCard(
+            context: context,
+            icon: Icons.cloud_upload_outlined,
+            iconColor: const Color(0xFFE11D48),
+            iconBgColor: const Color(0xFFFFE4E6),
+            title: loc.translate('restore_data'),
+            description: loc.translate('restore_desc'),
+            buttonText: loc.translate('choose_json'),
+            buttonIcon: Icons.file_upload_outlined,
+            isFilledButton: false,
+            buttonColor: const Color(0xFFE11D48),
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(loc.translate('import_backup')),
+                  content: Text(loc.translate('import_warning')),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(loc.translate('cancel'))),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE11D48)),
+                      child: Text(loc.translate('import'), style: const TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                final success = await ref.read(backupServiceProvider).importData();
+                if (success) {
+                  // ignore: unused_result
+                  ref.refresh(clientsProvider);
+                  // ignore: unused_result
+                  ref.refresh(dashboardStatsProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.translate('import_success'))));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.translate('import_failed'))));
+                }
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Info Notice
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline, size: 20, color: Color(0xFFB45309)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(loc.translate('backup_info'), style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          
+          Text(loc.translate('danger_zone'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE11D48))),
+          const SizedBox(height: 12),
+          
+          // Delete Card
+          _buildActionCard(
+            context: context,
+            icon: Icons.delete_outline,
+            iconColor: const Color(0xFFE11D48),
+            iconBgColor: const Color(0xFFFFE4E6),
+            title: loc.translate('delete_reset'),
+            titleColor: const Color(0xFFE11D48),
+            description: loc.translate('delete_reset_desc'),
+            buttonText: loc.translate('delete_reset'),
+            buttonIcon: Icons.delete_outline,
+            isFilledButton: true,
+            buttonColor: const Color(0xFFEF4444),
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(loc.translate('delete_all_data')),
+                  content: Text(loc.translate('delete_all_warning')),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(loc.translate('cancel'))),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: Text(loc.translate('delete'), style: const TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await ref.read(dbServiceProvider).clearAllData();
+                // ignore: unused_result
+                ref.refresh(clientsProvider);
+                // ignore: unused_result
+                ref.refresh(dashboardStatsProvider);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.translate('all_data_deleted'))));
+              }
+            },
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String title,
+    Color titleColor = Colors.black87,
+    required String description,
+    required String buttonText,
+    required IconData buttonIcon,
+    required bool isFilledButton,
+    required Color buttonColor,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor)),
+                    const SizedBox(height: 6),
+                    Text(description, style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.4)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: isFilledButton
+                ? ElevatedButton.icon(
+                    onPressed: onTap,
+                    icon: Icon(buttonIcon, color: Colors.white, size: 20),
+                    label: Text(buttonText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: buttonColor,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  )
+                : OutlinedButton.icon(
+                    onPressed: onTap,
+                    icon: Icon(buttonIcon, color: buttonColor, size: 20),
+                    label: Text(buttonText, style: TextStyle(color: buttonColor, fontWeight: FontWeight.bold, fontSize: 15)),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: buttonColor, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
           ),
         ],
       ),

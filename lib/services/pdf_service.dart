@@ -10,159 +10,170 @@ import '../models/transaction_model.dart';
 class PdfService {
   static Future<Uint8List> _buildPdf(Client client, List<TransactionModel> transactions) async {
     final pdf = pw.Document();
-    final formatCurrency = NumberFormat.currency(locale: 'en_PK', symbol: 'Rs. ', decimalDigits: 0);
-    final dateFormatter = DateFormat('dd MMM yyyy');
-    final timeFormatter = DateFormat('hh:mm a');
+    final formatCurrency = NumberFormat('#,##0', 'en_US');
+    final dateFormatter = DateFormat('dd MMM, yy');
 
-    // Create PDF page
+    // Load Urdu-supporting font from Google Fonts
+    final urduFont = await PdfGoogleFonts.notoNaskhArabicRegular();
+    final urduFontBold = await PdfGoogleFonts.notoNaskhArabicBold();
+
+    final customTheme = pw.ThemeData.withFont(
+      base: urduFont,
+      bold: urduFontBold,
+    );
+
+    // Sort transactions chronologically for running balance
+    final chronologicalTx = List<TransactionModel>.from(transactions)
+      ..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+
+    String dateRange = '';
+    if (chronologicalTx.isNotEmpty) {
+      final firstDate = chronologicalTx.first.date ?? DateTime.now();
+      final lastDate = chronologicalTx.last.date ?? DateTime.now();
+      dateRange = '${dateFormatter.format(firstDate)} - ${dateFormatter.format(lastDate)}';
+    } else {
+      dateRange = dateFormatter.format(DateTime.now());
+    }
+
+    // Calculate Totals
+    double totalDebit = 0;
+    double totalCredit = 0;
+    for (var tx in chronologicalTx) {
+      if (tx.type == 'Sold Goods' || tx.type == 'Cash Given') {
+        totalDebit += tx.amount;
+      } else {
+        totalCredit += tx.amount;
+      }
+    }
+    double netBalance = totalCredit - totalDebit;
+    String netBalanceText = netBalance >= 0 ? '${formatCurrency.format(netBalance.abs())}\nCredit (+)' : '${formatCurrency.format(netBalance.abs())}\nDebit (-)';
+    PdfColor netBalanceColor = netBalance >= 0 ? PdfColors.green : PdfColors.red;
+
+    // Generate Transaction Rows
+    List<pw.Widget> transactionRows = [];
+    double runningBal = 0;
+    for (int i = 0; i < chronologicalTx.length; i++) {
+      final tx = chronologicalTx[i];
+      final isDebit = tx.type == 'Sold Goods' || tx.type == 'Cash Given';
+      
+      if (isDebit) {
+        runningBal -= tx.amount;
+      } else {
+        runningBal += tx.amount;
+      }
+
+      String debitStr = isDebit ? formatCurrency.format(tx.amount) : '-';
+      String creditStr = !isDebit ? formatCurrency.format(tx.amount) : '-';
+      String balSign = runningBal >= 0 ? '(+)' : '(-)';
+      
+      String tafseel = tx.note ?? '';
+      if (tx.isMaal && tx.weight != null && tx.unit != null && tx.itemCategory != null) {
+        String itemDetails = '${tx.weight} ${tx.unit} ${tx.itemCategory}';
+        tafseel = tafseel.isNotEmpty ? '$itemDetails\n$tafseel' : itemDetails;
+      }
+      
+      // If no note was added, leave it empty (removed transaction type fallback as requested)
+
+      transactionRows.add(
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(vertical: 12),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey200, width: 0.5)),
+          ),
+          child: pw.Row(
+            children: [
+              pw.Expanded(flex: 2, child: pw.Text(tx.date != null ? dateFormatter.format(tx.date!) : '-', style: pw.TextStyle(font: urduFont))),
+              pw.Expanded(flex: 3, child: pw.Text(tafseel, style: pw.TextStyle(font: urduFont), textDirection: pw.TextDirection.rtl)),
+              pw.Expanded(flex: 2, child: pw.Text(debitStr, textAlign: pw.TextAlign.right, style: pw.TextStyle(font: urduFont))),
+              pw.Expanded(flex: 2, child: pw.Text(creditStr, textAlign: pw.TextAlign.right, style: pw.TextStyle(font: urduFont))),
+              pw.Expanded(
+                flex: 3, 
+                child: pw.Text(
+                  '${formatCurrency.format(runningBal.abs())} $balSign', 
+                  textAlign: pw.TextAlign.right,
+                  style: pw.TextStyle(color: runningBal >= 0 ? PdfColors.green : PdfColors.red, font: urduFont)
+                )
+              ),
+            ],
+          ),
+        )
+      );
+    }
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
+        theme: customTheme,
         build: (pw.Context context) {
           return [
-            // Header
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'MY KHATA',
-                      style: pw.TextStyle(
-                        fontSize: 28,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue900,
-                      ),
-                    ),
-                    pw.Text(
-                      'Scrap & Rice Dealer',
-                      style: pw.TextStyle(fontSize: 14, color: PdfColors.grey700, fontStyle: pw.FontStyle.italic),
-                    ),
-                  ],
-                ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text('LEDGER STATEMENT', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                    pw.SizedBox(height: 4),
-                    pw.Text('Date: ${dateFormatter.format(DateTime.now())}', style: const pw.TextStyle(fontSize: 12)),
-                    pw.Text('Time: ${timeFormatter.format(DateTime.now())}', style: const pw.TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ],
+            // Top Header (App/Business Name)
+            pw.Text(
+              'Shah Traders',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800),
             ),
-            pw.SizedBox(height: 30),
-            pw.Divider(color: PdfColors.grey400),
             pw.SizedBox(height: 20),
 
-            // Client Details
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Billed To:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.grey700)),
-                    pw.SizedBox(height: 4),
-                    pw.Text(client.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    if (client.phone.isNotEmpty)
-                      pw.Text('Phone: ${client.phone}', style: const pw.TextStyle(fontSize: 12)),
-                    if (client.address != null && client.address!.isNotEmpty)
-                      pw.Text('Address: ${client.address}', style: const pw.TextStyle(fontSize: 12)),
-                  ],
-                ),
-                // Summary Balance in Header
-                pw.Container(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: pw.BoxDecoration(
-                    color: client.isReceivable ? PdfColors.green50 : PdfColors.red50,
-                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
-                    border: pw.Border.all(
-                      color: client.isReceivable ? PdfColors.green200 : PdfColors.red200,
-                      width: 2,
-                    ),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+            // Client Info & Statement Header
+            pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              color: PdfColors.grey50,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Statement ${client.name}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  if (client.phone.isNotEmpty) pw.Text(client.phone, style: const pw.TextStyle(fontSize: 12)),
+                  pw.Text(dateRange, style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                  pw.SizedBox(height: 20),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('Net Balance', style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700, fontWeight: pw.FontWeight.bold)),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        formatCurrency.format(client.netBalance.abs()),
-                        style: pw.TextStyle(
-                          fontSize: 24,
-                          fontWeight: pw.FontWeight.bold,
-                          color: client.isReceivable ? PdfColors.green800 : PdfColors.red800,
-                        ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Total Debit', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                          pw.Text('Rs ${formatCurrency.format(totalDebit)}', style: pw.TextStyle(fontSize: 14)),
+                        ],
                       ),
-                      pw.Text(
-                        client.isReceivable ? '(RECEIVABLE)' : '(PAYABLE)',
-                        style: pw.TextStyle(
-                          fontSize: 12,
-                          fontWeight: pw.FontWeight.bold,
-                          color: client.isReceivable ? PdfColors.green800 : PdfColors.red800,
-                        ),
+                      pw.Container(width: 1, height: 30, color: PdfColors.grey300),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Total Credit', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                          pw.Text('Rs ${formatCurrency.format(totalCredit)}', style: pw.TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                      pw.Container(width: 1, height: 30, color: PdfColors.grey300),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Net Balance', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+                          pw.Text(netBalanceText, style: pw.TextStyle(fontSize: 12, color: netBalanceColor)),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 30),
-
-            // Transactions Table
-            pw.Text('Transaction History', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-            pw.SizedBox(height: 10),
-            pw.TableHelper.fromTextArray(
-              headers: ['Date', 'Type', 'Details (Weight/Item)', 'Amount'],
-              data: transactions.map((tx) {
-                String itemDetails = '-';
-                if (tx.isMaal && tx.weight != null && tx.unit != null && tx.itemCategory != null) {
-                  itemDetails = '${tx.weight} ${tx.unit} ${tx.itemCategory}';
-                }
-                
-                final isGave = tx.isGave;
-                final sign = isGave ? '+' : '-';
-
-                return [
-                  tx.date != null ? DateFormat('dd MMM yyyy').format(tx.date!) : '-',
-                  tx.type,
-                  itemDetails,
-                  '$sign ${formatCurrency.format(tx.amount)}',
-                ];
-              }).toList(),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
-              rowDecoration: const pw.BoxDecoration(
-                border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
-              ),
-              cellHeight: 35,
-              cellAlignments: {
-                0: pw.Alignment.centerLeft,
-                1: pw.Alignment.center,
-                2: pw.Alignment.center,
-                3: pw.Alignment.centerRight,
-              },
-            ),
-          ];
-        },
-        footer: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Divider(color: PdfColors.grey400),
-              pw.SizedBox(height: 8),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Generated by My Khata App', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-                  pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
                 ],
               ),
-            ],
-          );
+            ),
+            pw.SizedBox(height: 20),
+
+            // Transactions Table Header
+            pw.Row(
+              children: [
+                pw.Expanded(flex: 2, child: pw.Text('Date', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                pw.Expanded(flex: 3, child: pw.Text('Tafseel', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                pw.Expanded(flex: 2, child: pw.Text('Debit (-)', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                pw.Expanded(flex: 2, child: pw.Text('Credit (+)', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                pw.Expanded(flex: 3, child: pw.Text('Balance', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+              ],
+            ),
+            pw.SizedBox(height: 10),
+            pw.Divider(color: PdfColors.grey300),
+
+            // Insert all rows here seamlessly
+            ...transactionRows,
+          ];
         },
       ),
     );

@@ -19,6 +19,8 @@ class _AddClientSheetState extends ConsumerState<AddClientSheet> {
   late final TextEditingController _addressController;
   late final TextEditingController _cityController;
   late final TextEditingController _cnicController;
+  
+  String _selectedType = 'Customer';
 
   @override
   void initState() {
@@ -28,6 +30,7 @@ class _AddClientSheetState extends ConsumerState<AddClientSheet> {
     _addressController = TextEditingController(text: widget.existingClient?.address ?? '');
     _cityController = TextEditingController(text: widget.existingClient?.city ?? '');
     _cnicController = TextEditingController(text: widget.existingClient?.cnic ?? '');
+    _selectedType = widget.existingClient?.type ?? 'Customer';
   }
 
   @override
@@ -61,11 +64,36 @@ class _AddClientSheetState extends ConsumerState<AddClientSheet> {
               Center(
                 child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
               ),
+              const SizedBox(height: 16),
+              Text(widget.existingClient != null ? loc.translate('update_customer') : loc.translate('add_new_customer_vendor'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFD84315))),
               const SizedBox(height: 24),
-              const SizedBox(height: 24),
-              Text(widget.existingClient != null ? loc.translate('update_customer') : loc.translate('add_new_customer'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFD84315))),
-              const SizedBox(height: 24),
-              _buildModernTextField(_nameController, loc.translate('customer_name'), Icons.person_outline),
+              
+              // Client Type Selection Dropdown
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedType,
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFD84315)),
+                    items: [
+                      DropdownMenuItem(value: 'Customer', child: Text(loc.translate('customer'), style: const TextStyle(fontSize: 15))),
+                      DropdownMenuItem(value: 'Vendor', child: Text(loc.translate('vendor'), style: const TextStyle(fontSize: 15))),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedType = val);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              _buildModernTextField(_nameController, _selectedType == 'Customer' ? loc.translate('customer_name') : loc.translate('vendor_name'), Icons.person_outline),
               const SizedBox(height: 16),
               _buildModernTextField(_phoneController, loc.translate('phone_number'), Icons.phone_outlined, keyboardType: TextInputType.phone),
               const SizedBox(height: 16),
@@ -92,6 +120,7 @@ class _AddClientSheetState extends ConsumerState<AddClientSheet> {
                         widget.existingClient!.address = _addressController.text.trim();
                         widget.existingClient!.city = _cityController.text.trim();
                         widget.existingClient!.cnic = _cnicController.text.trim();
+                        widget.existingClient!.type = _selectedType;
                         await db.updateClient(widget.existingClient!);
                       } else {
                         final newClient = Client(
@@ -100,6 +129,7 @@ class _AddClientSheetState extends ConsumerState<AddClientSheet> {
                           address: _addressController.text.trim(),
                           city: _cityController.text.trim(),
                           cnic: _cnicController.text.trim(),
+                          type: _selectedType,
                         );
                         await db.addClient(newClient);
                       }

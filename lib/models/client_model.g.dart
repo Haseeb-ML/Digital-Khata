@@ -71,6 +71,11 @@ const ClientSchema = CollectionSchema(
       id: 10,
       name: r'totalGot',
       type: IsarType.double,
+    ),
+    r'type': PropertySchema(
+      id: 11,
+      name: r'type',
+      type: IsarType.string,
     )
   },
   estimateSize: _clientEstimateSize,
@@ -140,6 +145,7 @@ int _clientEstimateSize(
     }
   }
   bytesCount += 3 + object.phone.length * 3;
+  bytesCount += 3 + object.type.length * 3;
   return bytesCount;
 }
 
@@ -160,6 +166,7 @@ void _clientSerialize(
   writer.writeString(offsets[8], object.phone);
   writer.writeDouble(offsets[9], object.totalGave);
   writer.writeDouble(offsets[10], object.totalGot);
+  writer.writeString(offsets[11], object.type);
 }
 
 Client _clientDeserialize(
@@ -180,6 +187,7 @@ Client _clientDeserialize(
     phone: reader.readStringOrNull(offsets[8]) ?? '',
     totalGave: reader.readDoubleOrNull(offsets[9]) ?? 0.0,
     totalGot: reader.readDoubleOrNull(offsets[10]) ?? 0.0,
+    type: reader.readStringOrNull(offsets[11]) ?? 'Customer',
   );
   object.id = id;
   return object;
@@ -214,6 +222,8 @@ P _clientDeserializeProp<P>(
       return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
     case 10:
       return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
+    case 11:
+      return (reader.readStringOrNull(offset) ?? 'Customer') as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -1784,6 +1794,135 @@ extension ClientQueryFilter on QueryBuilder<Client, Client, QFilterCondition> {
       ));
     });
   }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'type',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeContains(String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'type',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'type',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'type',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterFilterCondition> typeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'type',
+        value: '',
+      ));
+    });
+  }
 }
 
 extension ClientQueryObject on QueryBuilder<Client, Client, QFilterCondition> {}
@@ -1908,6 +2047,18 @@ extension ClientQuerySortBy on QueryBuilder<Client, Client, QSortBy> {
   QueryBuilder<Client, Client, QAfterSortBy> sortByTotalGotDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'totalGot', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterSortBy> sortByType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterSortBy> sortByTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.desc);
     });
   }
 }
@@ -2044,6 +2195,18 @@ extension ClientQuerySortThenBy on QueryBuilder<Client, Client, QSortThenBy> {
       return query.addSortBy(r'totalGot', Sort.desc);
     });
   }
+
+  QueryBuilder<Client, Client, QAfterSortBy> thenByType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Client, Client, QAfterSortBy> thenByTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'type', Sort.desc);
+    });
+  }
 }
 
 extension ClientQueryWhereDistinct on QueryBuilder<Client, Client, QDistinct> {
@@ -2116,6 +2279,13 @@ extension ClientQueryWhereDistinct on QueryBuilder<Client, Client, QDistinct> {
   QueryBuilder<Client, Client, QDistinct> distinctByTotalGot() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'totalGot');
+    });
+  }
+
+  QueryBuilder<Client, Client, QDistinct> distinctByType(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'type', caseSensitive: caseSensitive);
     });
   }
 }
@@ -2192,6 +2362,12 @@ extension ClientQueryProperty on QueryBuilder<Client, Client, QQueryProperty> {
   QueryBuilder<Client, double, QQueryOperations> totalGotProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'totalGot');
+    });
+  }
+
+  QueryBuilder<Client, String, QQueryOperations> typeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'type');
     });
   }
 }

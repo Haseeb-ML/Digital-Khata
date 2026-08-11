@@ -31,6 +31,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   late DateTime selectedDate;
   final _amountController = TextEditingController();
   final _weightController = TextEditingController();
+  final _noteController = TextEditingController();
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       selectedDate = tx.date ?? DateTime.now();
       _amountController.text = tx.amount.toString();
       _weightController.text = tx.weight?.toString() ?? '';
+      _noteController.text = tx.note ?? '';
     } else {
       transactionType = widget.initialIsGave ? 'Cash Given' : 'Cash Received';
       itemCategory = 'Rice';
@@ -112,12 +114,18 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: transactionType,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: activeColor),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: activeColor),
                     icon: Icon(Icons.arrow_drop_down, color: activeColor),
                     items: ['Purchased Goods', 'Sold Goods', 'Cash Given', 'Cash Received'].map((String value) {
+                      final Map<String, String> labels = {
+                        'Purchased Goods': 'Purchased Goods (مال خریدا)',
+                        'Sold Goods': 'Sold Goods (مال بیچا)',
+                        'Cash Given': 'Cash Given (کیش دیا)',
+                        'Cash Received': 'Cash Received (کیش لیا)'
+                      };
                       return DropdownMenuItem<String>(
                         value: value,
-                        child: Text(value),
+                        child: Text(labels[value] ?? value),
                       );
                     }).toList(),
                     onChanged: (newValue) {
@@ -216,18 +224,35 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               TextField(
                 controller: _amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: activeColor),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: activeColor),
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
                   hintText: '0',
                   hintStyle: TextStyle(color: AppTheme.textMuted.withOpacity(0.5)),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                   filled: true,
                   fillColor: activeColor.withOpacity(0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Details Input
+              Text(loc.translate('details'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _noteController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  hintText: loc.translate('details'),
+                  hintStyle: TextStyle(color: AppTheme.textMuted.withOpacity(0.5)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  filled: true,
+                  fillColor: AppTheme.borderLight.withOpacity(0.3),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 24),
@@ -288,6 +313,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       itemCategory: isMaal ? itemCategory : null,
                       weight: isMaal ? parsedWeight : null,
                       unit: isMaal ? unit : null,
+                      note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
                     );
 
                     final db = ref.read(dbServiceProvider);
@@ -311,12 +337,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activeColor,
-                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Text(loc.translate('save').toUpperCase(), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
+                  child: Text(loc.translate('save').toUpperCase(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
                 ),
               ),
             ],

@@ -21,6 +21,7 @@ class Client {
   
   double totalGave;
   double totalGot;
+  String type;
 
   Client({
     this.name = '',
@@ -34,6 +35,7 @@ class Client {
     this.businessCategories = const [],
     this.totalGave = 0.0,
     this.totalGot = 0.0,
+    this.type = 'Customer',
   });
 
   @ignore
