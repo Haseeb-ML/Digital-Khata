@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
 
@@ -14,7 +16,27 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
-  void _signup() {
+  Future<void> _signup() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill all the fields.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_email', email);
+    await prefs.setString('user_password', password);
+    await prefs.setString('user_name', name);
+
+    if (!mounted) return;
     // Navigate to Dashboard
     Navigator.pushAndRemoveUntil(
       context,

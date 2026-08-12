@@ -105,6 +105,29 @@ class PdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         theme: customTheme,
+        header: (pw.Context context) {
+          if (context.pageNumber > 1) {
+            return pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 10),
+              child: pw.Column(
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Expanded(flex: 2, child: pw.Text('Date', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Expanded(flex: 3, child: pw.Text('Tafseel', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Expanded(flex: 2, child: pw.Text('Debit (-)', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Expanded(flex: 2, child: pw.Text('Credit (+)', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Expanded(flex: 3, child: pw.Text('Balance', textAlign: pw.TextAlign.right, style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                    ],
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Divider(color: PdfColors.grey300),
+                ],
+              ),
+            );
+          }
+          return pw.Container();
+        },
         build: (pw.Context context) {
           return [
             // Top Header (App/Business Name)
@@ -121,7 +144,12 @@ class PdfService {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('Statement ${client.name}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.Row(
+                    children: [
+                      pw.Text('Statement ', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(client.name, style: pw.TextStyle(fontSize: 16, font: urduFontBold), textDirection: pw.TextDirection.rtl),
+                    ],
+                  ),
                   if (client.phone.isNotEmpty) pw.Text(client.phone, style: const pw.TextStyle(fontSize: 12)),
                   pw.Text(dateRange, style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
                   pw.SizedBox(height: 20),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart';
 
 import '../models/client_model.dart';
 import '../theme/app_theme.dart';
@@ -47,7 +49,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         destinations: [
           NavigationDestination(icon: const Icon(Icons.home_filled), label: AppLocalizations.of(context).translate('dashboard')),
           NavigationDestination(icon: const Icon(Icons.people_outline), label: AppLocalizations.of(context).translate('clients')),
-          const NavigationDestination(icon: Icon(Icons.backup_outlined), label: 'Backup'),
+          NavigationDestination(icon: const Icon(Icons.backup_outlined), label: AppLocalizations.of(context).translate('backup')),
           NavigationDestination(icon: const Icon(Icons.settings_outlined), label: AppLocalizations.of(context).translate('settings')),
         ],
       ),
@@ -415,13 +417,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     
     if (client.netBalance > 0) {
       statusColor = const Color(0xFFD32F2F);
-      statusText = "You'll Get";
+      statusText = AppLocalizations.of(context).translate('you_will_get');
     } else if (client.netBalance < 0) {
       statusColor = const Color(0xFF4CAF50);
-      statusText = "You'll Give";
+      statusText = AppLocalizations.of(context).translate('you_will_give');
     } else {
       statusColor = Colors.grey.shade600;
-      statusText = "Settled";
+      statusText = AppLocalizations.of(context).translate('cleared');
     }
     final balanceText = formatCurrency.format(client.netBalance.abs());
     final initial = client.name.isNotEmpty ? client.name[0].toUpperCase() : '?';
@@ -534,6 +536,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             trailing: const Icon(Icons.language),
             onTap: () {
               _showLanguageBottomSheet(context);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            title: Text(loc.translate('logout')),
+            trailing: const Icon(Icons.logout, color: Colors.red),
+            onTap: () async {
+              final prefs = await SharedPreferences.getInstance();
+              // Just mark as logged out (if we had a flag), but DO NOT delete the account credentials.
+              await prefs.setBool('is_logged_in', false);
+              
+              if (!context.mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
             },
           ),
         ],
